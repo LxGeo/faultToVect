@@ -53,13 +53,13 @@ else()
 endif()
 
 include_directories(include)
+include_directories("$ENV{LX_GEO_REPOS_ROOT}/LxGeoCppLibs/libs/shared/include/")
+include_directories("$ENV{LX_GEO_REPOS_ROOT}/LxGeoCppLibs/libs/IO_DATA/include/")
+
 
 file(GLOB_RECURSE SOURCE include/* src/*)
 add_executable(${PROJECT_NAME} ${SOURCE})
+add_dependencies(${PROJECT_NAME} LxGeoFactoryShared)
 
-#target_link_libraries(${PROJECT_NAME} PRIVATE fmt::fmt fmt::fmt-header-only doctest::doctest LIBNAME)
-target_link_libraries(${PROJECT_NAME} ${GDAL_LIBRARIES} ${Boost_FILESYSTEM_LIBRARY} ${OpenCV_LIBS} fmt::fmt fmt::fmt-header-only doctest::doctest)
+target_link_libraries(${PROJECT_NAME} ${GDAL_LIBRARIES} ${Boost_FILESYSTEM_LIBRARY} ${OpenCV_LIBS} fmt::fmt fmt::fmt-header-only)
 target_compile_options(${PROJECT_NAME} PRIVATE ${OpenMP_CXX_FLAGS})
-
-#include(doctest)
-#doctest_discover_tests(${PROJECT_NAME})

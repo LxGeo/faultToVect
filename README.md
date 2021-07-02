@@ -11,7 +11,8 @@
 To build the project for windows:
 - Install qgis from [osgeo4w][osgeo4w-url]
 - Install vcpkg to help install remaining dependencies [vcpkg][vcpkg-url]
-- Set following environment variables in powershell script file (set_env.ps1): 
+- Set following environment variables in powershell script file (set_env.ps1):
+	- LX_GEO_REPO_ROOT
 	- OSGEO4W_ROOT
 	- VS17COMNTOOLS ( probably "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\Common7\Tools" )
 	- VCPKG_ROOT

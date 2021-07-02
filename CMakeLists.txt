@@ -14,8 +14,5 @@ endif()
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -std=c++17 -O3")
 
-#include(CTest)
-#enable_testing()
-
+add_subdirectory("$ENV{LX_GEO_REPOS_ROOT}/LxGeoCppLibs/" out/build/bin/)
 add_subdirectory(app)
-#add_subdirectory(lib)

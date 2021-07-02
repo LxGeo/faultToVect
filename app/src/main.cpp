@@ -1,19 +1,36 @@
-#define DOCTEST_CONFIG_IMPLEMENT
+#include "gdal.h"
+#include "parameters.h"
+#include "vectorization.h"
 
-#include <doctest/doctest.h>
-#include <iostream>
 
-int main(int argc, char** argv) {
-    doctest::Context context;
-    context.applyCommandLine(argc, argv);
+using namespace LxGeo::faultToVector;
 
-    //int res = context.run();
+int main(int argc, char* argv[])
+{
+	clock_t t_begin = clock();
+	GDALAllRegister();
 
-    // if (context.shouldExit()) {
-    //     return res;
-    // }
+	// Reads command-line parameters
 
-    std::cout << "Hello cherif" << '\n';
+	params = new Parameters(argc, argv);
+	if (!params->initialized()) {
+		delete params;
+		return 1;
+	}
 
-    return 1;
+	// Runs process
+
+	Vectorization* V = new Vectorization();
+	if (V->pre_check())
+		V->run();
+
+	// Quits
+
+	delete V;
+	delete params;
+
+	clock_t t_end = clock();
+	//std::cout << "** Elapsed time : " << double(t_end - t_begin) / CLOCKS_PER_SEC << " s." << std::endl;
+
+	return 0;
 }
