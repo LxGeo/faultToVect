@@ -1,11 +1,11 @@
 cmake_minimum_required(VERSION 3.12)
 project(faultToVect)
 
-set(EXECUTABLE_OUTPUT_PATH ../../out/build/bin/)
+set(EXECUTABLE_OUTPUT_PATH ../../out/bin/${CMAKE_BUILD_TYPE})
 
-find_package(Boost REQUIRED COMPONENTS filesystem)
+find_package(Boost REQUIRED COMPONENTS filesystem log)
 if(Boost_FOUND)
-	set(Boost_USE_STATIC_LIBS OFF)
+	set(Boost_USE_STATIC_LIBS ON)
 	set(Boost_USE_MULTITHREAD OFF)
 	include_directories(${Boost_INCLUDE_DIRS})
 	link_directories(${Boost_LIBRARY_DIRS})
@@ -60,6 +60,14 @@ include_directories("$ENV{LX_GEO_REPOS_ROOT}/LxGeoCppLibs/libs/IO_DATA/include/"
 file(GLOB_RECURSE SOURCE include/* src/*)
 add_executable(${PROJECT_NAME} ${SOURCE})
 add_dependencies(${PROJECT_NAME} LxGeoFactoryShared)
+add_dependencies(${PROJECT_NAME} IO_DATA)
 
-target_link_libraries(${PROJECT_NAME} ${GDAL_LIBRARIES} ${Boost_FILESYSTEM_LIBRARY} ${OpenCV_LIBS} fmt::fmt fmt::fmt-header-only)
+target_link_libraries(${PROJECT_NAME} ${GDAL_LIBRARIES} ${Boost_FILESYSTEM_LIBRARY} ${Boost_LOG_LIBRARY} ${OpenCV_LIBS} fmt::fmt fmt::fmt-header-only)
+
+target_link_libraries(${PROJECT_NAME} debug ../out/Debug/LxGeoFactoryShared)
+target_link_libraries(${PROJECT_NAME} optimized ../out/Release/LxGeoFactoryShared)
+
+target_link_libraries(${PROJECT_NAME} debug ../out/Debug/IO_DATA)
+target_link_libraries(${PROJECT_NAME} optimized ../out/Release/IO_DATA)
+
 target_compile_options(${PROJECT_NAME} PRIVATE ${OpenMP_CXX_FLAGS})
