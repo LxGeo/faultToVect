@@ -1,6 +1,7 @@
 #include "gdal.h"
 #include "parameters.h"
 #include "vectorization.h"
+#include "GDAL_OPENCV_IO.h"
 
 
 using namespace LxGeo::faultToVector;
@@ -8,7 +9,8 @@ using namespace LxGeo::faultToVector;
 int main(int argc, char* argv[])
 {
 	clock_t t_begin = clock();
-	GDALAllRegister();
+	//GDALAllRegister();
+	kgdal2cv = new KGDAL2CV();
 
 	// Reads command-line parameters
 
@@ -26,6 +28,7 @@ int main(int argc, char* argv[])
 
 	// Quits
 
+	delete kgdal2cv;
 	delete V;
 	delete params;
 

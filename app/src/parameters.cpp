@@ -36,6 +36,9 @@ namespace LxGeo
 			output_shapefile = "result.shp";
 			temp_dir = "temp_dir";
 			overwrite_output = false;
+			min_heat_value = 0;
+			ignore_thin = false;
+			max_n_level_neighbour = 10;
 
 		}
 
@@ -53,7 +56,10 @@ namespace LxGeo
 				<< std::endl
 				<< "  [-i] [input_raster_path] -> provide path of input prediction raster" << std::endl
 				<< "  [-o] [basename] -> specify basename of output file" << std::endl
+				<< "  [-max_n_level_neighbour] [value] -> specify maximum N level for neighbourhood creation" << std::endl
+				<< "  [-min_heat_value] [-mhv] [value] -> specify minimum pixel value to include in vectorization (not included!). Default: 0" << std::endl
 				<< "  [--overwrite_output] -> flag to overwrite output if exists" << std::endl
+				<< "  [--ignore_thin] -> flag to ignore thinning step!" << std::endl
 				<< std::endl
 				<< "Version compiled on : " << __DATE__ << std::endl;
 
@@ -94,9 +100,21 @@ namespace LxGeo
 					r += 2;
 
 				}
-				else if (arg == "--overwrite_output" && r + 1 < argc) {
-					overwrite_output = true;
+				else if ((arg == "-min_heat_value" || arg == "-mhv") && r + 1 < argc) {
+					min_heat_value = atoi(argv[r + 1]);
 					r += 2;
+				}
+				else if ((arg == "-max_n_level_neighbour" || arg == "-mnln") && r + 1 < argc) {
+					max_n_level_neighbour = atoi(argv[r + 1]);
+					r += 2;
+				}
+				else if (arg == "--overwrite_output") {
+					overwrite_output = true;
+					r += 1;
+				}
+				else if (arg == "--ignore_thin") {
+					ignore_thin = true;
+					r += 1;
 				}
 				else {
 					unknown_args.push_back(arg);

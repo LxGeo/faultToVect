@@ -32,7 +32,11 @@ namespace LxGeo
 			std::string output_shapefile;
 			std::string temp_dir;
 
+			int min_heat_value;
+			short int max_n_level_neighbour;
+
 			bool overwrite_output;
+			bool ignore_thin;
 
 
 		};
