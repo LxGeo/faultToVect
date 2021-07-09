@@ -66,20 +66,40 @@ namespace LxGeo
 			pred_raster.load_raster(params->input_raster_path, GA_ReadOnly, false);
 
 			// Apply thinning on grayscale
-			RasterIO thinned_raster = RasterIO(pred_raster);
-			if (!(params->ignore_thin))
+			matrix thinned_zeros = matrix::zeros(pred_raster.raster_Y_size, pred_raster.raster_X_size, pred_raster.raster_data.type());
+			RasterIO thinned_raster = RasterIO(pred_raster, thinned_zeros);
+			if (!(params->ignore_thin)){
 				thin_raster(pred_raster, thinned_raster);
+				boost::filesystem::path thinned_output_path = boost::filesystem::path(params->temp_dir) /
+					boost::filesystem::path("thinned.tif");
+				thinned_raster.write_raster(thinned_output_path.string().c_str(), true);
+			}
 			else thinned_raster.raster_data = pred_raster.raster_data;
-
-			/*boost::filesystem::path thinned_output_path = boost::filesystem::path(params->temp_dir) /
-				boost::filesystem::path("thinned.tif");
-			thinned_raster.write_raster(thinned_output_path.string().c_str(), true);*/
 			
 			thinned_raster.raster_data.convertTo(thinned_raster.raster_data, CV_8U);
 			assert(thinned_raster.raster_data.type() == CV_8U);
-			PixGraph pix_graph = PixGraph(thinned_raster.raster_data, thinned_raster.raster_X_size, thinned_raster.raster_Y_size, thinned_raster.get_origin_point(), true);
+			PixGraph pix_graph = PixGraph(thinned_raster.raster_data, thinned_raster.get_pixel_width(), thinned_raster.get_pixel_height(), thinned_raster.get_origin_point(),pred_raster.geotransform , true);
 			pix_graph.Init_graph_2();
 			pix_graph.compute_pixels_angles();
+			pix_graph.compute_pixels_angles_homogenity();
+			pix_graph.generate_free_segments();
+			pix_graph.write_free_segments_shapefile(params->output_shapefile, pred_raster.spatial_refrence->Clone());
+
+			/*save angles matrix*/
+			matrix angle_matrix = matrix(pred_raster.raster_Y_size, pred_raster.raster_X_size, CV_64F, cv::Scalar(0.f));
+			pix_graph.transform_relative_vector_to_matrix(*pix_graph.get_all_vertcies_angle(), angle_matrix);
+			RasterIO angles_raster = RasterIO(pred_raster, angle_matrix);
+			boost::filesystem::path angles_raster_output_path = boost::filesystem::path(params->temp_dir) /
+				boost::filesystem::path("angles.tif");
+			angles_raster.write_raster(angles_raster_output_path.string().c_str(), true);
+
+			/*save angles homogenity matrix*/
+			matrix angle_homogenity_matrix = matrix(pred_raster.raster_Y_size, pred_raster.raster_X_size, CV_64F, cv::Scalar(0.f));
+			pix_graph.transform_relative_vector_to_matrix(*pix_graph.get_all_vertcies_angle_homegenity(), angle_homogenity_matrix);
+			RasterIO angles_homogenity_raster = RasterIO(pred_raster, angle_homogenity_matrix);
+			boost::filesystem::path angles_homogenity_raster_output_path = boost::filesystem::path(params->temp_dir) /
+				boost::filesystem::path("angles_homogenity.tif");
+			angles_homogenity_raster.write_raster(angles_homogenity_raster_output_path.string().c_str(), true);
 
 		}
 

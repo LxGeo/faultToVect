@@ -39,6 +39,7 @@ namespace LxGeo
 			min_heat_value = 0;
 			ignore_thin = false;
 			max_n_level_neighbour = 10;
+			simplification_factor = 1.5f;
 
 		}
 
@@ -58,6 +59,7 @@ namespace LxGeo
 				<< "  [-o] [basename] -> specify basename of output file" << std::endl
 				<< "  [-max_n_level_neighbour] [value] -> specify maximum N level for neighbourhood creation" << std::endl
 				<< "  [-min_heat_value] [-mhv] [value] -> specify minimum pixel value to include in vectorization (not included!). Default: 0" << std::endl
+				<< "  [-simplification_factor] [-sf] [value] -> specify maximum allowed error for pixel vectorization. Default: 1.5" << std::endl
 				<< "  [--overwrite_output] -> flag to overwrite output if exists" << std::endl
 				<< "  [--ignore_thin] -> flag to ignore thinning step!" << std::endl
 				<< std::endl
@@ -106,6 +108,10 @@ namespace LxGeo
 				}
 				else if ((arg == "-max_n_level_neighbour" || arg == "-mnln") && r + 1 < argc) {
 					max_n_level_neighbour = atoi(argv[r + 1]);
+					r += 2;
+				}
+				else if ((arg == "-simplification_factor" || arg == "-sf") && r + 1 < argc) {
+					simplification_factor = atof(argv[r + 1]);
 					r += 2;
 				}
 				else if (arg == "--overwrite_output") {

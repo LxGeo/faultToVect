@@ -14,8 +14,8 @@ namespace LxGeo
 		public:
 			PixGraph(){};
 
-			PixGraph(matrix& _image_matrix, double _pix_width, double _pix_height, Boost_Point_2 _origin_point, bool _eight_connection) :
-				image_matrix(_image_matrix),pix_width(_pix_width), pix_height(_pix_height), origin_point(_origin_point), eight_connection(_eight_connection) //, min_heat_value(_min_heat_value)
+			PixGraph(matrix& _image_matrix, double _pix_width, double _pix_height, Boost_Point_2 _origin_point, double* _geotransform, bool _eight_connection) :
+				image_matrix(_image_matrix),pix_width(_pix_width), pix_height(_pix_height), origin_point(_origin_point),eight_connection(_eight_connection) //, min_heat_value(_min_heat_value)
 			{
 				assert(_image_matrix.type() == CV_8U);
 				if (eight_connection) {
@@ -29,6 +29,12 @@ namespace LxGeo
 				int pad_value = 1;
 				min_heat_value = static_cast<uchar>(params->min_heat_value);
 				cv::copyMakeBorder(_image_matrix, image_matrix, pad_value, pad_value, pad_value, pad_value, cv::BORDER_CONSTANT, params->min_heat_value);
+
+				x_pixel_sign = sign(pix_width);
+				y_pixel_sign = sign(pix_height);
+				for (int i_g = 0; i_g < 6; i_g++) { geotransform[i_g] = _geotransform[i_g]; }
+
+				refrence_axis_vector = Inexact_Vector_2(Inexact_Point_2(0, 0), Inexact_Point_2(0, y_pixel_sign *1));
 			};
 			~PixGraph() {
 			};
@@ -45,12 +51,33 @@ namespace LxGeo
 
 			void PixGraph::compute_pixels_angles();
 
+			Inexact_Vector_2 PixGraph::get_best_fitting_vector(std::pair<Inexact_Point_2, uchar> central_pix_pair,
+				std::vector<Inexact_Point_2> neighbours_points,
+				std::vector<uchar> neigbours_heat, std::vector<short int>& level_labels);
+
+			void PixGraph::compute_pixels_angles_homogenity();
+
+			void PixGraph::transform_relative_vector_to_matrix(std::vector<double>& respective_vector, matrix& output_matrix);
+
+			std::vector<double>* get_all_vertcies_angle() { return &all_vertcies_angles; }
+
+			std::vector<double>* get_all_vertcies_angle_homegenity() { return &all_vertcies_angle_homegenity; }
+
+			std::pair<std::vector<size_t>::iterator, std::vector<size_t>::iterator> PixGraph::get_vertex_first_neighbours(size_t vertex_idx);
+
+			void PixGraph::generate_free_segments();
+
+			void PixGraph::write_free_segments_shapefile(const std::string& output_filename, OGRSpatialReference* source_srs);
+
+
+
 
 		public:
 			//PixGraphStrategy* pxg_strategy;
 			// input matrix to vectorize
 			matrix image_matrix;
 		private:
+			double geotransform[6];
 			// minimum value to include (default 0)
 			uchar min_heat_value=0;
 			double pix_width=1;
@@ -66,6 +93,14 @@ namespace LxGeo
 			std::vector<double> all_vertcies_angle_homegenity;
 			std::vector<std::pair<short int, short int>> pixel_connection_pairs;
 			Boost_RTree_2 points_tree;
+			// refrence vector used to compute vectors angles
+			Inexact_Vector_2 refrence_axis_vector;
+			int x_pixel_sign;
+			int y_pixel_sign;
+
+			// free Segments
+			std::vector<Inexact_Segment_2> free_segments;
+			std::vector<bool> vectorized_vertcies;
 		};
 
 		/*class PixGraphStrategy{};

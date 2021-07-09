@@ -37,6 +37,8 @@ namespace LxGeo
 
 			bool overwrite_output;
 			bool ignore_thin;
+			
+			double simplification_factor;
 
 
 		};

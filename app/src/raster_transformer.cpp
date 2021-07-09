@@ -28,15 +28,15 @@ namespace LxGeo
 			cv::ximgproc::thinning(binary_image, thinned_binary, cv::ximgproc::THINNING_ZHANGSUEN);
 			
 
-			/*RasterIO bin_thin_raster(raster_to_thin, thinned_binary);
+			RasterIO bin_thin_raster(raster_to_thin, thinned_binary);
 			boost::filesystem::path binary_thin_output_path = boost::filesystem::path(params->temp_dir) /
 				boost::filesystem::path("binary_thinned.tif");
-			bin_thin_raster.write_raster(binary_thin_output_path.string().c_str(), true);*/
+			bin_thin_raster.write_raster(binary_thin_output_path.string().c_str(), true);
 
 			
-			//raster_to_thin.raster_data.copyTo(thinned_raster.raster_data, thinned_binary);
-			thinned_binary.convertTo(thinned_binary, raster_to_thin.raster_data.type());
-			cv::bitwise_and(thinned_binary, raster_to_thin.raster_data, thinned_raster.raster_data);
+			raster_to_thin.raster_data.copyTo(thinned_raster.raster_data, thinned_binary);
+			//thinned_binary.convertTo(thinned_binary, raster_to_thin.raster_data.type());
+			//cv::bitwise_and(thinned_binary, raster_to_thin.raster_data, thinned_raster.raster_data);
 			
 			/*boost::filesystem::path temp_thin_output_path = boost::filesystem::path(params->temp_dir) /
 				boost::filesystem::path("temp_thinned.tif");
