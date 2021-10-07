@@ -82,8 +82,6 @@ namespace LxGeo
 			pix_graph.Init_graph_2();
 			pix_graph.compute_pixels_angles();
 			pix_graph.compute_pixels_angles_homogenity();
-			pix_graph.generate_free_segments();
-			pix_graph.write_free_segments_shapefile(params->output_shapefile, pred_raster.spatial_refrence->Clone());
 
 			/*save angles matrix*/
 			matrix angle_matrix = matrix(pred_raster.raster_Y_size, pred_raster.raster_X_size, CV_64F, cv::Scalar(0.f));
@@ -101,6 +99,9 @@ namespace LxGeo
 				boost::filesystem::path("angles_homogenity.tif");
 			angles_homogenity_raster.write_raster(angles_homogenity_raster_output_path.string().c_str(), true);
 
+
+			pix_graph.generate_free_segments();
+			pix_graph.write_free_segments_shapefile(params->output_shapefile, pred_raster.spatial_refrence);
 		}
 
 

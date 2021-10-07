@@ -100,6 +100,7 @@ namespace LxGeo
 
 			// free Segments
 			std::vector<Inexact_Segment_2> free_segments;
+			std::vector<float> free_segments_weight;
 			std::vector<bool> vectorized_vertcies;
 		};
 

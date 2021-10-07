@@ -49,26 +49,37 @@ namespace LxGeo
 			// reserve vectors
 			all_vertcies.reserve(max_pixels_cnt);
 			// Iterate through all inner pixels
+			std::cout << "Loading Raster values" << std::endl;
+			tqdm bar;
 			for (size_t current_row = 1; current_row < image_matrix.rows; ++current_row) {
+				bar.progress(current_row, image_matrix.rows);
 				for (size_t current_col = 1; current_col < image_matrix.cols; ++current_col) {
 				
 					uchar c_pix_heat = image_matrix.at<uchar>(current_row, current_col);
 					if (c_pix_heat > min_heat_value) {
-						all_vertcies.push_back(Boost_Point_2(current_row - 1, current_col - 1));
+						all_vertcies.push_back(Boost_Point_2(current_row - 0.5, current_col - 0.5));
 						all_vertcies_heat.push_back(c_pix_heat);
 					}
 
 				}
 			}
+			bar.finish();
 			all_vertcies.shrink_to_fit();
 			// make rtree for points
+			std::cout << "Creating points tree" << std::endl;
+			bar.reset();
 			points_tree = Boost_RTree_2();
-			for (size_t vertex_idx = 0; vertex_idx < all_vertcies.size(); ++vertex_idx)
+			for (size_t vertex_idx = 0; vertex_idx < all_vertcies.size(); ++vertex_idx) {
+				bar.progress(vertex_idx, all_vertcies.size());
 				points_tree.insert(Boost_Value_2(Boost_Box_2(all_vertcies[vertex_idx], all_vertcies[vertex_idx]), vertex_idx));
-
+			}
+			bar.finish();
+						
 			// add first n level neighbour
+			std::cout << "Creating first level neighbour" << std::endl;
+			bar.reset();
 			for (size_t c_vertex_idx = 0; c_vertex_idx < all_vertcies.size(); ++c_vertex_idx) {
-				
+				bar.progress(c_vertex_idx, all_vertcies.size());
 				Boost_Point_2 c_point = all_vertcies[c_vertex_idx];
 
 				// search for neighbours touching // meaning distance <= 1 if 4 connection or distance <= sqrt(2) if 8 connection
@@ -86,20 +97,22 @@ namespace LxGeo
 
 					size_t possible_i_index = possible_neighbors[i].second;
 					Boost_Point_2 possible_i_point = all_vertcies[possible_i_index];
-
 					double diff_distance = std::abs<double>(bg::distance(c_point, possible_i_point));
 					if (diff_distance <= buff_value) {
 						correct_neighbors.push_back(possible_i_index);
+						
 					}
+
 				}
 				correct_neighbors.shrink_to_fit();
 
 				add_neighbours(c_vertex_idx, correct_neighbors);
 
 			}
-
+			bar.finish();
 			// add remaining n level neighbours
 			for (size_t n_level_fill_iteration = 2; n_level_fill_iteration <= params->max_n_level_neighbour; ++n_level_fill_iteration) {
+				std::cout << "Running " << n_level_fill_iteration << " N level" << std::endl;
 				N_level_neighbours_iterate();
 			}
 		}
@@ -127,7 +140,9 @@ namespace LxGeo
 		}
 
 		void PixGraph::N_level_neighbours_iterate() {
+			tqdm bar;
 			for (size_t c_vertex_idx = 0; c_vertex_idx < all_vertcies.size(); ++c_vertex_idx) {
+				bar.progress(c_vertex_idx, all_vertcies.size());
 				if (vertecies_N_level_neighbors[c_vertex_idx].first.first.empty())
 					continue;
 
@@ -151,6 +166,7 @@ namespace LxGeo
 					vertecies_N_level_neighbors[c_vertex_idx].second.push_back(vertecies_N_level_neighbors[c_vertex_idx].first.first.size());
 
 			}
+			bar.finish();
 		}
 
 		std::pair<std::vector<size_t>::iterator, std::vector<size_t>::iterator> PixGraph::get_vertex_first_neighbours(size_t vertex_idx) {
@@ -269,12 +285,15 @@ namespace LxGeo
 			vectorized_vertcies = std::vector<bool>(all_vertcies.size(), false);
 			size_t vectorized_vertcies_count = 0;
 			free_segments.clear();
+			free_segments_weight.clear();
 			free_segments.reserve(all_vertcies.size() / 10);
+			free_segments_weight.reserve(all_vertcies.size() / 10);
 
+			std::cout << "Generating free segments" << std::endl;
+			tqdm bar;
 			while (vectorized_vertcies_count < all_vertcies.size()) {
-				BOOST_LOG_TRIVIAL(debug) << "segment count " << free_segments.size();
-				if (free_segments.size()== 20088)
-					BOOST_LOG_TRIVIAL(debug) << "segment check! ";
+				bar.progress(vectorized_vertcies_count, all_vertcies.size());
+				//BOOST_LOG_TRIVIAL(debug) << "segment count " << free_segments.size();
 				size_t iteration_count = 0;
 
 				// get start point (best homogenity_value)
@@ -330,7 +349,7 @@ namespace LxGeo
 					Inexact_Line_2 common_line(central_point, common_vector);
 
 					for (size_t already_fitted_point_idx : fitted_points) {
-						double fit_err = CGAL::squared_distance(transform_B2C_Point(all_vertcies[already_fitted_point_idx]), common_line);
+						double fit_err = std::sqrt(CGAL::squared_distance(transform_B2C_Point(all_vertcies[already_fitted_point_idx]), common_line));
 						if (fit_err > params->simplification_factor && last_common_line != NULL) // maybe add minimum iteration
 						{
 							// use last fitted line
@@ -340,7 +359,7 @@ namespace LxGeo
 
 					bool should_break = false;
 					for (size_t possible_point_idx : all_possible_points_indices) {
-						double fit_err = CGAL::squared_distance(transform_B2C_Point(all_vertcies[possible_point_idx]), common_line);
+						double fit_err = std::sqrt(CGAL::squared_distance(transform_B2C_Point(all_vertcies[possible_point_idx]), common_line));
 						if (fit_err < params->simplification_factor) {
 							fitted_points.insert(possible_point_idx);
 						}
@@ -352,6 +371,7 @@ namespace LxGeo
 				}
 
 				// creating segment from fitted line & fitted points
+				float segment_weight = 0;
 				double min_x = all_vertcies[*fitted_points.begin()].get<0>();
 				double max_x = all_vertcies[*fitted_points.begin()].get<0>();
 				double min_y = all_vertcies[*fitted_points.begin()].get<1>();
@@ -364,7 +384,11 @@ namespace LxGeo
 					vectorized_vertcies[fitted_pt] = true;
 					vectorized_vertcies_count++;
 					all_vertcies_angle_homegenity[fitted_pt] = DBL_MAX;
+					segment_weight += all_vertcies_heat[fitted_pt];
 				}
+
+				//normalizing segment weight
+				segment_weight /= fitted_points.size();
 
 				min_x -= 0.5;
 				max_x += 0.5; 
@@ -373,7 +397,7 @@ namespace LxGeo
 				Inexact_Iso_rectangle_2 bbox(Inexact_Point_2(min_x, min_y), Inexact_Point_2(max_x, max_y));
 
 				if (fitted_points.size() <= 1) {
-					BOOST_LOG_TRIVIAL(info) << "fitted points not enough! count= " << fitted_points.size();
+					//BOOST_LOG_TRIVIAL(info) << "fitted points not enough! count= " << fitted_points.size();
 					continue;
 				}
 
@@ -382,12 +406,14 @@ namespace LxGeo
 				if (intersection_result) {
 					if (const Inexact_Segment_2* s = boost::get<Inexact_Segment_2>(&*intersection_result)) {
 						free_segments.push_back(*s);
+						free_segments_weight.push_back(segment_weight);
 					}
 					else {
 						BOOST_LOG_TRIVIAL(debug) << "Error generating free segment!";
 					}
 				}
 			}
+			bar.finish();
 			BOOST_LOG_TRIVIAL(info) << "Generated free segments count: " << free_segments.size();
 
 		}
@@ -412,13 +438,12 @@ namespace LxGeo
 
 				// Step 2.
 				// Writes target file
-
 				target_dataset = driver->Create(output_filename.c_str(), 0, 0, 0, GDT_Unknown, NULL);
 				if (target_dataset == NULL) {
 					throw std::logic_error("Error : creation of output file failed.");
 				}
 
-				OGRLayer* target_layer = target_dataset->CreateLayer("0", source_srs, wkbLineString, NULL);
+				OGRLayer* target_layer = target_dataset->CreateLayer("lines", source_srs, wkbLineString, NULL);
 				if (target_layer == NULL) {
 					throw std::logic_error("Error : layer creation failed.");
 				}
@@ -429,31 +454,38 @@ namespace LxGeo
 					throw std::logic_error("Error : field creation failed.");
 				}
 
+				OGRFieldDefn o_field_segment_weight("seg_w", OFTReal);
+
+				if (target_layer->CreateField(&o_field_segment_weight) != OGRERR_NONE) {
+					throw std::logic_error("Error : field creation failed.");
+				}
+
 				for (size_t i = 0; i < free_segments.size(); ++i) {
 					Inexact_Segment_2 S = free_segments[i];
+					float c_segment_weight = free_segments_weight[i];
 					OGRLineString ogr_linestring;
 
 					const Inexact_Point_2& S1 = S.source();
 					double dfX =
 						geotransform[0]
-						+ S1.x() * geotransform[1]
-						+ S1.y() * geotransform[2];
+						+ S1.y() * geotransform[1]
+						+ S1.x() * geotransform[2];
 					double dfY =
 						geotransform[3]
-						+ S1.x() * geotransform[4]
-						+ S1.y() * geotransform[5];
+						+ S1.y() * geotransform[4]
+						+ S1.x() * geotransform[5];
 					//double s1_refrenced_x = origin_point.get<0>() + S1.x() * abs(pix_width);
 					//double s1_refrenced_y = origin_point.get<1>() + S1.y() * abs(pix_height);
 					ogr_linestring.addPoint(&OGRPoint(dfX, dfY));
 					const Inexact_Point_2& S2 = S.target();
 					dfX =
 						geotransform[0]
-						+ S2.x() * geotransform[1]
-						+ S2.y() * geotransform[2];
+						+ S2.y() * geotransform[1]
+						+ S2.x() * geotransform[2];
 					dfY =
 						geotransform[3]
-						+ S2.x() * geotransform[4]
-						+ S2.y() * geotransform[5];
+						+ S2.y() * geotransform[4]
+						+ S2.x() * geotransform[5];
 					//double s2_refrenced_x = origin_point.get<0>() + S2.x() * abs(pix_width);
 					//double s2_refrenced_y = origin_point.get<1>() + S2.y() * abs(pix_height);
 					ogr_linestring.addPoint(&OGRPoint(dfX, dfY));
@@ -463,6 +495,7 @@ namespace LxGeo
 
 					feature->SetGeometry(&ogr_linestring);
 					feature->SetField("ID", int(i));
+					feature->SetField("seg_w", float(c_segment_weight));
 
 					// Writes new feature
 					OGRErr error = target_layer->CreateFeature(feature);

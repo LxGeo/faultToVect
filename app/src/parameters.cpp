@@ -38,7 +38,7 @@ namespace LxGeo
 			overwrite_output = false;
 			min_heat_value = 0;
 			ignore_thin = false;
-			max_n_level_neighbour = 10;
+			max_n_level_neighbour = 6;
 			simplification_factor = 1.5f;
 
 		}
