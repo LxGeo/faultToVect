@@ -10,7 +10,7 @@ int main(int argc, char* argv[])
 {
 	clock_t t_begin = clock();
 	//GDALAllRegister();
-	kgdal2cv = new KGDAL2CV();
+	KGDAL2CV *kgdal2cv = new KGDAL2CV();
 
 	// Reads command-line parameters
 
