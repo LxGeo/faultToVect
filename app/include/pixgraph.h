@@ -1,6 +1,7 @@
 #pragma once
 #include "defs.h"
 #include "parameters.h"
+#include "combinations.h"
 
 namespace LxGeo
 {
@@ -59,13 +60,25 @@ namespace LxGeo
 
 			void PixGraph::transform_relative_vector_to_matrix(std::vector<double>& respective_vector, matrix& output_matrix);
 
+			void PixGraph::transform_relative_vector_to_matrix(std::vector<size_t>& respective_vector, matrix& output_matrix);
+
 			std::vector<double>* get_all_vertcies_angle() { return &all_vertcies_angles; }
 
 			std::vector<double>* get_all_vertcies_angle_homegenity() { return &all_vertcies_angle_homegenity; }
 
+			std::vector<size_t>* get_all_vertcies_connected_comp_labels() { return &connected_components_label; }
+
 			std::pair<std::vector<size_t>::iterator, std::vector<size_t>::iterator> PixGraph::get_vertex_first_neighbours(size_t vertex_idx);
 
+			void PixGraph::compute_connected_components();
+
+			void PixGraph::compute_connected_components_iter();
+
+			void PixGraph::compute_pixels_angles_homogenity2();
+
 			void PixGraph::generate_free_segments();
+
+			void PixGraph::generate_free_polylines(size_t component_label);
 
 			void PixGraph::write_free_segments_shapefile(const std::string& output_filename, OGRSpatialReference* source_srs);
 
@@ -101,7 +114,11 @@ namespace LxGeo
 			// free Segments
 			std::vector<Inexact_Segment_2> free_segments;
 			std::vector<float> free_segments_weight;
+			std::vector<size_t> free_segments_resp_component;
 			std::vector<bool> vectorized_vertcies;
+
+			//connected components
+			std::vector<size_t> connected_components_label;
 		};
 
 		/*class PixGraphStrategy{};
