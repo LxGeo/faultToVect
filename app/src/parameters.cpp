@@ -38,7 +38,8 @@ namespace LxGeo
 			overwrite_output = false;
 			min_heat_value = 0;
 			ignore_thin = false;
-			max_n_level_neighbour = 6;
+			ignore_multi_thresh_thin = false;
+			max_n_level_neighbour = 2;
 			simplification_factor = 1.5f;
 
 		}
@@ -62,6 +63,7 @@ namespace LxGeo
 				<< "  [-simplification_factor] [-sf] [value] -> specify maximum allowed error for pixel vectorization. Default: 1.5" << std::endl
 				<< "  [--overwrite_output] -> flag to overwrite output if exists" << std::endl
 				<< "  [--ignore_thin] -> flag to ignore thinning step!" << std::endl
+				<< "  [--ignore_multi_thresh_thin] -> flag to ignore multi thresh thinning step!" << std::endl
 				<< std::endl
 				<< "Version compiled on : " << __DATE__ << std::endl;
 
@@ -120,6 +122,10 @@ namespace LxGeo
 				}
 				else if (arg == "--ignore_thin") {
 					ignore_thin = true;
+					r += 1;
+				}
+				else if (arg == "--ignore_multi_thresh_thin") {
+					ignore_multi_thresh_thin = true;
 					r += 1;
 				}
 				else {
