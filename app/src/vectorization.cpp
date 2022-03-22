@@ -7,6 +7,7 @@
 #include "pixgraph.h"
 #include "vPixGraph/v_pix_graph.h"
 #include "io_shapefile.h"
+#include "affine_geometry/affine_transformer.h"
 
 
 namespace LxGeo
@@ -103,15 +104,18 @@ namespace LxGeo
 			auto sub_graphs = ST.connected_components_subgraphs();
 			size_t sub_gr_id = 0;
 			for (auto& c_sub_graph : sub_graphs) {
-				std::vector<LineString_with_attributes> jl = ST.export_attachedLineString_as_LSwithAttr(ST.extract_junction_lines(c_sub_graph, 2, 4), sub_gr_id);
+				std::vector<LineString_with_attributes> jl = ST.export_attachedLineString_as_LSwithAttr(ST.extract_junction_lines_iterative(c_sub_graph, 1, 3), sub_gr_id);
 				all_traced.insert(all_traced.end(), jl.begin(), jl.end());
+				std::cout << "Cnt: " << all_traced.size() << std::endl;
 				sub_gr_id++;
-				if (sub_gr_id == 1) break;
 			}
+			auto coords_transformet_mat = pred_raster.get_matrix_transformer(pred_raster.get_pixel_width() / 2, pred_raster.get_pixel_height() / 2);
+			for (auto& lswa : all_traced)
+				lswa.set_definition(affine_transform_geometry(lswa.get_definition(), coords_transformet_mat));
 			boost::filesystem::path traced_output_path = boost::filesystem::path(params->temp_dir) /
 				boost::filesystem::path("traced.shp");
-			LineStringShapfileIO shp_traced = LineStringShapfileIO(traced_output_path.string(), nullptr);
-			shp_traced.write_linestring_shapefile(all_traced);
+			LineStringShapfileIO shp_traced = LineStringShapfileIO(traced_output_path.string(), pred_raster.spatial_refrence->Clone());
+			shp_traced.write_linestring_shapefile(all_traced);			
 			
 			return;
 			PixGraph pix_graph = PixGraph(thinned_raster.raster_data, thinned_raster.get_pixel_width(), thinned_raster.get_pixel_height(), thinned_raster.get_origin_point(),pred_raster.geotransform , true);

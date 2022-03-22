@@ -45,6 +45,36 @@ namespace LxGeo
 			JUNCTION = 3,
 		};
 
+		struct simplifiedPt {
+			int x;
+			int y;
+			bool ignored;
+			simplifiedPt(int _x, int _y, bool _ignored) :x(_x), y(_y), ignored(_ignored) {};
+		};
+
+		// lambda used to transform a container of simplified points 
+		auto connect_simplified_pts = [](std::vector<simplifiedPt>& simplified_pts)->std::list<Boost_Point_2> {
+
+			auto start_pt = *simplified_pts.begin();
+			std::list<Boost_Point_2> simplified_line; simplified_line.push_back(Boost_Point_2(start_pt.x, start_pt.y));
+			for (auto c_pt_iter = simplified_pts.begin() + 1; c_pt_iter != simplified_pts.end(); ++c_pt_iter) {
+				if (c_pt_iter->ignored) continue;
+				else {
+					auto next_pt_iter = c_pt_iter + 1;
+					if (next_pt_iter == simplified_pts.end())
+						simplified_line.push_back(Boost_Point_2(c_pt_iter->x, c_pt_iter->y));
+					else
+						simplified_line.push_back(Boost_Point_2(
+							double(next_pt_iter->x - c_pt_iter->x) / 2 + c_pt_iter->x,
+							double(next_pt_iter->y - c_pt_iter->y) / 2 + c_pt_iter->y
+						));
+				}
+			}
+			return simplified_line;
+		};
+
+		auto getDegreeType = [](int degree_cnt)->vertexDegreeType { return vertexDegreeType(std::min<int>(degree_cnt, vertexDegreeType::JUNCTION)); };
+
 		class SkeletonTracer
 		{
 		public:
@@ -183,8 +213,8 @@ namespace LxGeo
 			}
 
 			struct attachedLineString {
-				size_t start_extremity_id;
-				size_t end_extremity_id;
+				int start_extremity_id;
+				int end_extremity_id;
 				Boost_LineString_2 path_linestring;
 				attachedLineString(int se, int ee, std::list<Boost_Point_2>& pp) : start_extremity_id(se), end_extremity_id(ee), path_linestring(pp.begin(), pp.end()) {};
 			};
@@ -192,9 +222,7 @@ namespace LxGeo
 			std::list<attachedLineString> extract_junction_lines(ComponentGraph& component_graph, int max_orientations_count = 2, int max_succesive_count = 4) {
 				
 				std::list<attachedLineString> extracted_lines;
-
-				auto getDegreeType = [](int degree_cnt)->vertexDegreeType { return vertexDegreeType(std::min<int>(degree_cnt, vertexDegreeType::JUNCTION)); };
-
+				
 				ComponentGraph::vertex_descriptor start_pt=NULL;
 				ComponentGraph::vertex_iterator v, vend;
 				for (boost::tie(v, vend) = boost::vertices(component_graph); v != vend; ++v) {
@@ -206,34 +234,7 @@ namespace LxGeo
 				}
 				if (boost::degree(start_pt, component_graph) == 0)
 					return extracted_lines;
-
-				struct simplifiedPt {
-					int x;
-					int y;
-					bool ignored;
-					simplifiedPt(int _x, int _y, bool _ignored) :x(_x), y(_y), ignored(_ignored) {};
-				};
-
-				// lambda used to transform a container of simplified points 
-				auto connect_simplified_pts = [](std::vector<simplifiedPt>& simplified_pts)->std::list<Boost_Point_2> {
-
-					auto start_pt = *simplified_pts.begin();
-					std::list<Boost_Point_2> simplified_line; simplified_line.push_back(Boost_Point_2(start_pt.x, start_pt.y));
-					for (auto c_pt_iter = simplified_pts.begin()+1; c_pt_iter != simplified_pts.end(); ++c_pt_iter) {
-						if (c_pt_iter->ignored) continue;
-						else {
-							auto next_pt_iter = c_pt_iter + 1;
-							if (next_pt_iter == simplified_pts.end())
-								simplified_line.push_back(Boost_Point_2(c_pt_iter->x, c_pt_iter->y));
-							else
-								simplified_line.push_back(Boost_Point_2(
-									double(next_pt_iter->x - c_pt_iter->x) / 2 + c_pt_iter->x,
-									double(next_pt_iter->y - c_pt_iter->y)/2 + c_pt_iter->y
-								));
-						}
-					}
-					return simplified_line;
-				};
+							
 
 				// algo related datastructres
 				std::set<orientationPair> traced_orientations;
@@ -252,7 +253,7 @@ namespace LxGeo
 
 					PixelData& v0_pd = pixel_data_map[v0]; PixelData& v1_pd = pixel_data_map[v1];
 					assert(!v1_pd.vectorized); 
-					v1_pd.vectorized = true;
+					if (target_degree_type!=vertexDegreeType::JUNCTION) v1_pd.vectorized = true;
 					orientationPair c_orientation = getPixelsOrientation(v0_pd, v1_pd);
 
 					if (traced_orientations.find(c_orientation) == traced_orientations.end()) {// a new orientation is intorduced
@@ -289,7 +290,7 @@ namespace LxGeo
 						}
 					}
 
-					simplified_pts.emplace_back(v1_pd.col, v1_pd.row, simplified_pt);
+					simplified_pts.emplace_back(v1_pd.row, v1_pd.col, simplified_pt);
 					last_orientation = c_orientation;
 					
 					if (target_degree_type == vertexDegreeType::JUNCTION) {
@@ -298,9 +299,9 @@ namespace LxGeo
 						extracted_lines.emplace_back(start_extremity, end_extremity, connect_simplified_pts(simplified_pts));
 						ComponentGraph::adjacency_iterator v, vend;
 						for (boost::tie(v, vend) = adjacent_vertices(v1, component_graph); v != vend; ++v) {
-							if (*v != v0) {
+							if (*v != v0 && !pixel_data_map[*v].vectorized) {
 								start_extremity = v1;
-								std::vector<simplifiedPt> c_trace_pts; c_trace_pts.emplace_back(pixel_data_map[start_extremity].col, pixel_data_map[start_extremity].row, false);
+								std::vector<simplifiedPt> c_trace_pts; c_trace_pts.emplace_back(pixel_data_map[start_extremity].row, pixel_data_map[start_extremity].col, false);
 								dfs(v1, *v, c_trace_pts);
 							}
 						}
@@ -326,14 +327,145 @@ namespace LxGeo
 
 				ComponentGraph::adjacency_iterator vadj, vadj_end;
 				for (boost::tie(vadj, vadj_end) = adjacent_vertices(start_pt, component_graph); vadj != vadj_end; ++vadj) {
-					if (!pixel_data_map[*vadj].vectorized) {
+					ComponentGraph::vertex_descriptor vadj_desc = *vadj;
+					if (!pixel_data_map[vadj_desc].vectorized) {
 						start_extremity = start_pt;
-						std::vector<simplifiedPt> c_trace_pts; c_trace_pts.emplace_back(pixel_data_map[start_extremity].col, pixel_data_map[start_extremity].row, false);
+						std::vector<simplifiedPt> c_trace_pts; c_trace_pts.emplace_back(pixel_data_map[start_extremity].row, pixel_data_map[start_extremity].col, false);
 						dfs(start_pt, *vadj, c_trace_pts);
 					}
 				}
 
 				return extracted_lines;
+			}
+
+			std::list<attachedLineString> extract_junction_lines_iterative(ComponentGraph& component_graph, int max_orientations_count = 2, int max_succesive_count = 4) {
+
+				std::list<attachedLineString> extracted_lines;
+
+				std::list<ComponentGraph::vertex_descriptor> start_pts;
+				ComponentGraph::vertex_descriptor sample_leaf=-1;
+				ComponentGraph::vertex_iterator v, vend;
+				for (boost::tie(v, vend) = boost::vertices(component_graph); v != vend; ++v) {
+					int c_vertex_degree = boost::degree(*v, component_graph);
+					if (getDegreeType(c_vertex_degree) == vertexDegreeType::LEAF) {
+						sample_leaf = *v;
+					} 
+					else if (getDegreeType(c_vertex_degree) == vertexDegreeType::JUNCTION) {
+						start_pts.push_back(*v);
+					}
+				}
+				
+				if (start_pts.empty())
+				{
+					// end if single node
+					if (sample_leaf == -1) return extracted_lines;
+					// add sample leaf if no junctions found
+					else start_pts.push_back(sample_leaf);
+				}
+								
+				
+				int start_extremity = -1, end_extremity = -1;
+
+				std::function<void(ComponentGraph::vertex_descriptor, ComponentGraph::vertex_descriptor, std::vector<simplifiedPt>&)> dfs_iter
+					= [&](ComponentGraph::vertex_descriptor v0, ComponentGraph::vertex_descriptor v1, std::vector<simplifiedPt>& simplified_pts) {
+
+					// algo related datastructres
+					std::set<orientationPair> traced_orientations;
+					orientationPair last_orientation = orientations_map.at(orientationSymbol::C);
+					int non_changement_count = 0;
+					bool is_straight = false;
+					//self breakable loop
+					while (true) {
+
+					vertexDegreeType target_degree_type = getDegreeType(boost::degree(v1, component_graph));
+					// boolean representing if v1 is simplified
+					bool simplified_pt = !(target_degree_type == vertexDegreeType::JUNCTION || target_degree_type == vertexDegreeType::LEAF); //true
+
+					PixelData& v0_pd = pixel_data_map[v0]; PixelData& v1_pd = pixel_data_map[v1];
+					assert(!v1_pd.vectorized);
+					if (target_degree_type != vertexDegreeType::JUNCTION) v1_pd.vectorized = true;
+					orientationPair c_orientation = getPixelsOrientation(v0_pd, v1_pd);
+
+					if (traced_orientations.find(c_orientation) == traced_orientations.end()) {// a new orientation is intorduced
+						if (traced_orientations.size() == max_orientations_count) {//orientation break
+							(simplified_pts.end() - 1)->ignored = false;
+							//clear respective structres
+							traced_orientations.clear(); //traced_orientations.insert(c_orientation);
+							non_changement_count = 0;
+						}
+						else {
+							if (is_straight) {//straight line break
+								(simplified_pts.end() - 1)->ignored = false;
+								traced_orientations.clear(); //traced_orientations.insert(c_orientation);
+								non_changement_count = 0;
+								is_straight = false;
+							}
+							else {// add new orientation
+								traced_orientations.insert(c_orientation);
+							}
+						}
+					}
+					else {// old orientation encountred
+						non_changement_count += (c_orientation.symbol == last_orientation.symbol);
+						if (non_changement_count >= max_succesive_count) { // max consecutive orientation check
+							if (traced_orientations.size() <= 1) {// straight line case
+								is_straight = true;
+							}
+							else {// succesive point break
+								(simplified_pts.end() - max_succesive_count)->ignored = false; // remove simplification of N-succession point
+								is_straight = true;
+								traced_orientations.erase(c_orientation);
+								non_changement_count = 0;
+							}
+						}
+					}
+
+					simplified_pts.emplace_back(v1_pd.col, v1_pd.row, simplified_pt);
+					last_orientation = c_orientation;
+
+					if (target_degree_type == vertexDegreeType::JUNCTION) {
+						// add traced lines with respective extremeties
+						end_extremity = v1;
+						extracted_lines.emplace_back(start_extremity, end_extremity, connect_simplified_pts(simplified_pts));
+						break;
+					}
+					if (target_degree_type == vertexDegreeType::LEAF) {
+						extracted_lines.emplace_back(start_extremity, end_extremity, connect_simplified_pts(simplified_pts));
+						break;
+					}
+					if (target_degree_type == vertexDegreeType::MIDDLE) {
+						// get correct next neighbour
+						ComponentGraph::vertex_descriptor v2;
+						ComponentGraph::adjacency_iterator v, vend;
+						for (boost::tie(v, vend) = adjacent_vertices(v1, component_graph); v != vend; ++v) {
+							if (*v != v0) {
+								v2 = *v;
+								break;
+							}
+						}
+						// continue tracing
+						v0 = v1; v1 = v2;
+					}
+					
+					}
+
+				};
+
+				// trace all start points
+				for (auto& c_start_pt : start_pts) {
+
+					ComponentGraph::adjacency_iterator vadj, vadj_end;
+					for (boost::tie(vadj, vadj_end) = adjacent_vertices(c_start_pt, component_graph); vadj != vadj_end; ++vadj) {
+						ComponentGraph::vertex_descriptor vadj_desc = *vadj;
+						if (!pixel_data_map[vadj_desc].vectorized) {
+							if (getDegreeType(c_start_pt) == vertexDegreeType::JUNCTION) start_extremity = c_start_pt;
+							std::vector<simplifiedPt> simplified_pts; simplified_pts.emplace_back(pixel_data_map[start_extremity].col, pixel_data_map[start_extremity].row, false);
+							dfs_iter(c_start_pt, *vadj, simplified_pts);
+						}
+					}
+				}
+				return extracted_lines;
+
 			}
 
 			std::vector<LineString_with_attributes> export_attachedLineString_as_LSwithAttr(std::list<attachedLineString>& input_attached_lines,
@@ -350,8 +482,24 @@ namespace LxGeo
 				}
 				return out_linestrings;
 
-			}
+			};
 
+			std::vector<LineString_with_attributes> export_component_edge_graph_as_LSwithAttr(ComponentGraph& comp_graph) {
+				std::vector<LineString_with_attributes> edges_linestrings;
+				edges_linestrings.reserve(boost::num_edges(comp_graph));
+				auto es = boost::edges(comp_graph);
+				for (auto eit = es.first; eit != es.second; ++eit) {
+					ComponentGraph::vertex_descriptor source_ = boost::source(*eit, sp_graph), target_ = boost::target(*eit, sp_graph);
+					PixelData& source_data = pixel_data_map[source_], target_data = pixel_data_map[target_];
+					Boost_Point_2 source_rep_pt(source_data.row, source_data.col), target_rep_pt(target_data.row, target_data.col);
+
+					LineString_with_attributes c_edge_container(Boost_LineString_2({ source_rep_pt, target_rep_pt }));
+					c_edge_container.set_string_attribute("source", std::to_string(size_t(source_)));
+					c_edge_container.set_string_attribute("target", std::to_string(size_t(target_)));
+					edges_linestrings.push_back(c_edge_container);
+				}
+				return edges_linestrings;
+			}
 
 			~SkeletonTracer() {};
 
