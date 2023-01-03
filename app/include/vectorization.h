@@ -14,7 +14,9 @@ namespace LxGeo
 		{
 
 		public:
-			Vectorization() {};
+			Vectorization() {
+				apply_thin = true;
+			};
 
 			~Vectorization() {};
 
@@ -29,6 +31,8 @@ namespace LxGeo
 			* @return an bool indicating if can run algorithm
 			*/
 			bool pre_check();
+
+			bool apply_thin;
 
 		};
 	}
