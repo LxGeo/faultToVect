@@ -27,6 +27,7 @@ namespace LxGeo
 			bool printed_help;
 
 			std::string input_raster_path;
+			std::string input_thin_raster_path;
 
 			std::string output_basename;
 			std::string output_shapefile;

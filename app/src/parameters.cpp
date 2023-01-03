@@ -19,7 +19,7 @@ namespace LxGeo
 
 		bool Parameters::initialized()
 		{
-			bool is_initialized = !input_raster_path.empty();
+			bool is_initialized = input_raster_path.empty() | input_thin_raster_path.empty();
 			if (!is_initialized) help();
 
 			return is_initialized;
@@ -31,6 +31,7 @@ namespace LxGeo
 			printed_help = false;
 
 			input_raster_path.clear();
+			input_thin_raster_path.clear();
 
 			output_basename = "result";
 			output_shapefile = "result.shp";
@@ -89,6 +90,10 @@ namespace LxGeo
 				}
 				else if (arg == "-i" && r + 1 < argc) {
 					input_raster_path = argv[r + 1];
+					r += 2;
+				}
+				else if (arg == "-ith" && r + 1 < argc) {
+					input_thin_raster_path = argv[r + 1];
 					r += 2;
 				}
 				else if ((arg == "-o" || arg == "--output") && r + 1 < argc) {
