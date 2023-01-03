@@ -96,5 +96,35 @@ namespace LxGeo
 		}
 
 
+		void fill_small_components(matrix& in_binary, int min_size, int connectivity) {
+
+			matrix labels, stats, centroids;
+
+			cv::connectedComponentsWithStats(in_binary, labels, stats, centroids, connectivity, CV_32S);
+			int x, y, w, h, area;
+
+			auto invert_pixels = [&](int& comp_id) {
+				for (int c_col = x; c_col <= x+w; c_col++) {
+					for (int c_row = y; c_row <= y+h; c_row++) {
+						if (labels.at<int>(c_row, c_col) == comp_id)
+							in_binary.at<uchar>(c_row, c_col) = 255 - in_binary.at<uchar>(c_row, c_col);
+					}
+				}
+			};
+
+			for (int i = 0; i < stats.rows; i++)
+			{
+				x = stats.at<int>(cv::Point(0, i));
+				y = stats.at<int>(cv::Point(1, i));
+				w = stats.at<int>(cv::Point(2, i));
+				h = stats.at<int>(cv::Point(3, i));
+				area = stats.at<int>(cv::Point(4, i));
+				if (area <= min_size) {
+					invert_pixels(i);
+				}
+			}
+
+		}
+
 	}
 }
