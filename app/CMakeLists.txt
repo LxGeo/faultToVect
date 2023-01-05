@@ -46,12 +46,6 @@ else()
   message(STATUS "NOTICE: This exe requires fmt and will not be compiled.")
 endif()
 
-find_package(doctest CONFIG REQUIRED)
-if (doctest_FOUND)
-else()
-  message(STATUS "NOTICE: This exe requires doctest and will not be compiled.")
-endif()
-
 include_directories(include)
 include_directories("$ENV{LX_GEO_REPOS_ROOT}/LxGeoCppLibs/libs/shared/include/")
 include_directories("$ENV{LX_GEO_REPOS_ROOT}/LxGeoCppLibs/libs/IO_DATA/include/")

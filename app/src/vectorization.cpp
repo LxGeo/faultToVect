@@ -48,7 +48,7 @@ namespace LxGeo
 			params->temp_dir = output_temp_path.string();
 			if (boost::filesystem::exists(output_parent_dirname) || boost::filesystem::create_directories(output_parent_dirname))
 			{
-				std::cout << "Directory Created: " << output_parent_dirname.string() << std::endl;
+				std::cout << "Directory Created: " << output_parent_dirname.c_str() << std::endl;
 			}
 			else {
 				std::cout << "Cannot create output directory: " << output_parent_dirname.string() << std::endl;
@@ -56,10 +56,10 @@ namespace LxGeo
 			}
 			if (boost::filesystem::exists(output_temp_path) || boost::filesystem::create_directories(output_temp_path))
 			{
-				std::cout << "Directory Created: " << output_temp_path.string() << std::endl;
+				std::cout << "Directory Created: " << output_temp_path.c_str() << std::endl;
 			}
 			else {
-				std::cout << "Cannot create temporary output directory: " << output_temp_path.string() << std::endl;
+				std::cout << "Cannot create temporary output directory: " << output_temp_path.c_str() << std::endl;
 				return false;
 			}
 
@@ -128,7 +128,7 @@ namespace LxGeo
 			auto sub_graphs = ST.connected_components_subgraphs();
 			size_t sub_gr_id = 0;
 			for (auto& c_sub_graph : sub_graphs) {
-				std::vector<LineString_with_attributes> jl = ST.export_attachedLineString_as_LSwithAttr(ST.extract_junction_lines_iterative(c_sub_graph, 2, 6), sub_gr_id);
+				std::vector<LineString_with_attributes> jl = ST.export_attachedLineString_as_LSwithAttr(ST.extract_junction_lines_iterative(c_sub_graph, 3, 6), sub_gr_id);
 				all_traced.insert(all_traced.end(), jl.begin(), jl.end());
 				std::cout << "Cnt: " << all_traced.size() << std::endl;
 				sub_gr_id++;
